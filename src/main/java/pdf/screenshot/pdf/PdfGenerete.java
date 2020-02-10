@@ -5,6 +5,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map.Entry;
 
 import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.Document;
@@ -29,15 +36,6 @@ public class PdfGenerete {
 	private static Font NORMAL_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.NORMAL);
 	private static Font HEADER_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 14, Font.BOLD);
 
-//	public PdfGenerete() {
-//		try {
-//			createPdfImage();
-//		} catch (DocumentException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//	}
-
 	public static synchronized PdfGenerete getInstance() {
 		if (instace == null) {
 			instace = new PdfGenerete();
@@ -45,23 +43,35 @@ public class PdfGenerete {
 		return instace;
 	}
 
-	public void createDocument() throws DocumentException {
+	public void createDocument(String nameScenario) throws DocumentException, IOException, ParseException {
+		Path path = Paths.get("src\\test\\resources\\target\\" + getDate());
+
+		if (!Files.exists(path)) {
+			try {
+				Files.createDirectories(path);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
 		try {
-			PdfWriter.getInstance(document, new FileOutputStream("src\\test\\resources\\target\\teste.pdf"));
+			PdfWriter.getInstance(document, new FileOutputStream(path + "\\" + nameScenario + ".pdf"));
+
 		} catch (FileNotFoundException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 		document.open();
-		document.addTitle("Teste");
-
+		document.addTitle(nameScenario);
 	}
+
 
 	public Paragraph addImagesInPdf() throws IOException, DocumentException {
 		Paragraph paragraph = new Paragraph("", HEADER_FONT);
 		PdfPTable table = new PdfPTable(1);
 
-		for (BufferedImage image : take.getBufferImageList()) {
-			table.addCell(getImageInBuffer(image, 30f, true));
+		for (Entry<String, BufferedImage> textAdnImage : take.getBufferImageMap().entrySet()) {
+			table.addCell(getTextsInBuffer(textAdnImage.getKey()));
+			table.addCell(getImageInBuffer(textAdnImage.getValue(), 30f, true));
 		}
 		table.setHorizontalAlignment(Element.ALIGN_CENTER);
 
@@ -73,14 +83,13 @@ public class PdfGenerete {
 
 	}
 
-	public PdfPCell getImageInBuffer(BufferedImage bufferedImage, float scalePercent, boolean isHorizontallyCentered)
-			throws BadElementException, IOException {
+	public PdfPCell getImageInBuffer(BufferedImage bufferedImage, float scalePercent, boolean isHorizontallyCentered) throws BadElementException, IOException {
 
 		Image image = Image.getInstance(bufferedImage, null);
 		image.scalePercent(scalePercent);
 		image.setAlignment(Image.MIDDLE);
 		PdfPCell imageCell = new PdfPCell(image);
-		
+
 		imageCell.setBorderWidthBottom(60);
 		imageCell.setBorder(0);
 		if (isHorizontallyCentered) {
@@ -96,8 +105,21 @@ public class PdfGenerete {
 
 	}
 
-	public void createPdfImage() throws DocumentException {
-		createDocument();
+	public PdfPCell getTextsInBuffer(String description) throws BadElementException, IOException {
+
+		PdfPCell text = new PdfPCell(new Paragraph(description));
+
+		text.setBorderWidthBottom(60);
+		text.setBorder(0);
+		text.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+		text.setVerticalAlignment(Element.ALIGN_TOP);
+		return text;
+
+	}
+
+	public void createPdf(String name) throws DocumentException, IOException, ParseException {
+		createDocument(name);
 		try {
 			document.add(addImagesInPdf());
 		} catch (IOException e) {
@@ -105,5 +127,11 @@ public class PdfGenerete {
 		} finally {
 			document.close();
 		}
+	}
+
+	public String getDate() throws ParseException {
+		SimpleDateFormat format = new SimpleDateFormat("dd-MM-yyyy");
+		String dateString = format.format(new Date());
+		return dateString;
 	}
 }
